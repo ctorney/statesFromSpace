@@ -1,15 +1,13 @@
 
-import os
+
 import numpy as np
 import pandas as pd
 import random
 import math
-import warnings # to create a warning
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA # Principal component analysis
 from sklearn.ensemble import RandomForestClassifier # Random Forest classifier
 from sklearn.metrics import confusion_matrix # To compute Confusion Matrix
-from sklearn.cross_validation import StratifiedShuffleSplit # Train/Test split
 from sklearn.manifold import TSNE
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -21,12 +19,12 @@ posfilename = '../data/node_values.csv'
 
 
 valsDF = pd.read_csv(posfilename) 
-valsDF=valsDF[valsDF['dist_nn']<5]
+valsDF=valsDF[valsDF['dist_nn']<25]
 
 #valsDF=valsDF[0:200]
 N = len(valsDF)
 
-NFeats = 6  # number of features of the herd (mean nn, variance in nn, mean of 3 neighbors, circular variance)
+NFeats = 3 # number of features of the herd (mean nn, variance in nn, mean of 3 neighbors, circular variance)
 featRaw = np.empty((N,NFeats)) # 250 images x 4096 pixel values - raw features
 
 
@@ -36,23 +34,47 @@ yvals = valsDF['y'].values
 dist_nn = valsDF['dist_nn'].values
 angle_nn = valsDF['angle_nn'].values
 align_nn = valsDF['align_nn'].values
-
+angles = valsDF['angle'].values
+c2angle = np.cos(2*angles)
+s2angle = np.sin(2*angles)
 
 for i in range(N):
     for j in range(i+1,N):
         distances[i,j]=math.sqrt((xvals[i]-xvals[j])**2+(yvals[i]-yvals[j])**2)
         distances[j,i]=distances[i,j]
 
-length = 10
-weights = np.exp(-np.power(distances/length,2))
+#length = 10
+#weights = np.exp(-np.power(distances/length,2))
+
+
+length = 50
+weights = np.zeros_like(distances)
+weights[distances<length]=1.0
 sumweights=np.sum(weights,axis=1)
 for i in range(N):
-    featRaw[i][0]=np.dot(weights[i],dist_nn)/sumweights[i]
-    featRaw[i][1]=np.dot(weights[i],angle_nn)/sumweights[i]
-    featRaw[i][2]=np.dot(weights[i],align_nn)/sumweights[i]
-    featRaw[i][3]=np.dot(weights[i],np.power(dist_nn-featRaw[i][0],2))/sumweights[i]
-    featRaw[i][4]=np.dot(weights[i],np.power(angle_nn-featRaw[i][1],2))/sumweights[i]
-    featRaw[i][5]=np.dot(weights[i],np.power(align_nn-featRaw[i][2],2))/sumweights[i]
+    j=0
+    av_dist_nn=np.dot(weights[i],dist_nn)/sumweights[i]
+    #featRaw[i][j]=av_dist_nn
+    #j+=1
+    
+    featRaw[i][j]=np.dot(weights[i],angle_nn)/sumweights[i]
+    j+=1
+    
+    #featRaw[i][j]=np.dot(weights[i],align_nn)/sumweights[i]
+    #j+=1
+    
+    featRaw[i][j]=np.dot(weights[i],np.power(dist_nn-av_dist_nn,2))/sumweights[i]
+    j+=1
+    
+    #featRaw[i][j]=np.dot(weights[i],np.power(angle_nn-featRaw[i][1],2))/sumweights[i]
+    #j+=1
+    
+    #featRaw[i][j]=np.dot(weights[i],np.power(align_nn-featRaw[i][2],2))/sumweights[i]
+    #j+=1
+    
+    sinav = np.dot(weights[i],s2angle)/sumweights[i]
+    cosav = np.dot(weights[i],c2angle)/sumweights[i]
+    featRaw[i][j]=(sinav**2+cosav**2)**0.5
     
 # # Visualisation
 # 
@@ -71,12 +93,16 @@ seed=20 # to reproduce t-SNE results
 #embedding = pcaOut.components_.T
 #plot2D(embedding, classLabel, "PCA Raw Features", "lower left")
 # t-SNE
-model = TSNE(n_components=3, random_state=0)
+model = TSNE(n_components=2, random_state=0)
 
 embedding = model.fit_transform(featRaw) 
 plt.plot(embedding[:,0],embedding[:,1],'.')
-
+plt.figure()
+plt.hist2d(embedding[:,0],embedding[:,1], bins=40)
+#plt.colorbar()
+#plt.show()
+#
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax.scatter(embedding[:,0],embedding[:,1],embedding[:,2],'.')
+ax.scatter(featRaw[:,0],featRaw[:,1],featRaw[:,2],s=0.1)
 #embedding = tsne.tsne(featRaw, no_dims=k, initial_dims=20, perplexity=10.0, seed=seed)
