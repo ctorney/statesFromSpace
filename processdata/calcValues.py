@@ -16,7 +16,7 @@ posDF = pd.read_csv(posfilename)
 
 
 
-columns = ['id', 'x', 'y', 'dist_nn','angle_nn','align_nn']
+columns = ['id', 'x', 'y', 'angle','dist_nn','angle_nn','align_nn']
 df = pd.DataFrame(columns=columns) 
 
 xvals=posDF['xm'].values
@@ -30,6 +30,7 @@ for i,pos in posDF.iterrows():
     # find nearest neighbour
     thisX=pos['xm']
     thisY=pos['ym']
+    thisAngle=pos['angle']
     distances=(thisX-xvals)**2+(thisY-yvals)**2
     distances[i]=math.nan
     closest = np.nanargmin(distances)
@@ -48,7 +49,7 @@ for i,pos in posDF.iterrows():
     
     align_nn= abs(math.cos(pos['angle']-posDF['angle'][closestKD]))
     
-    df.loc[len(df)] = [count,thisX,thisY,dist_nn,angle_nn,align_nn]
+    df.loc[len(df)] = [count,thisX,thisY,thisAngle,dist_nn,angle_nn,align_nn]
 df.to_csv(outfilename,index_col=False)
 
 #            
