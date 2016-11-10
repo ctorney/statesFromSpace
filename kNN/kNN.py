@@ -15,10 +15,10 @@ outfilename = '../data/node_values.csv'
 posDF = pd.read_csv(posfilename) 
 
 KN=2
+KN2=2
 
 
-
-columns = ['id', 'dist_knn', 'angle_knn','align_knn']
+columns = ['id', 'LAT','LON','x', 'y', 'angle', 'dist_nn', 'angle_knn','align_knn']
 df = pd.DataFrame(columns=columns) 
 
 xvals=posDF['xm'].values
@@ -32,10 +32,12 @@ for i,pos in posDF.iterrows():
 
     # find nearest neighbour
     thisX=pos['xm']
+    
+        
     thisY=pos['ym']
     thisAngle=pos['angle']
     avDist=0 
-    avCos=math.cos(2*thisAngle)
+    avCos=0#math.cos(2*thisAngle)
     avSin=math.sin(2*thisAngle)
     avAngle=0
     
@@ -43,40 +45,65 @@ for i,pos in posDF.iterrows():
     all_count=0
     distances=(thisX-xvals)**2+(thisY-yvals)**2
     distances[i]=math.nan
-    while known_count<KN:
+    while known_count<KN2:
         closest = np.nanargmin(distances)
         distances[closest]=math.nan
         # calculate distance and angle to nearest neighbour
         diff = Geodesic.WGS84.Inverse(pos['Y'],pos['X'],posDF['Y'][closest],posDF['X'][closest])
-
-        if diff['s12']>50:
-            break
-        if all_count<KN:
+        if avDist==0:
             avDist += diff['s12']
+        #if diff['s12']>25:
+        #    break
+        if all_count<KN:
+            
             relAngle= math.radians(90-diff['azi1']) - pos['angle']
-            avAngle += math.cos(2*relAngle) # lat lon goes clockwise from north
+            #if relAngle<0:
+            #    relAngle+=2*math.pi
+            avAngle += 0.5+math.asin(math.cos(2*relAngle))/math.pi#math.cos(2*relAngle) # lat lon goes clockwise from north
 
             all_count+=1
     
         if posDF['Name'][closest]=='Known_direction':
-            nAngle = posDF['angle'][closest]
-            avCos+=math.cos(2*nAngle)
+            nAngle = posDF['angle'][closest]- pos['angle']
+            #if nAngle<0:
+            #    nAngle+=2*math.pi
+            avCos+= 0.5+math.asin(math.cos(2*nAngle))/math.pi
+            
+            #1-(math.fmod(2*nAngle , (2*math.pi))/math.pi)
             avSin+=math.sin(2*nAngle)
             known_count+=1
 
 
-    if all_count<KN:
+    if known_count<KN2:
         continue
-    avDist = avDist/float(all_count)
-    avAngle = avAngle/float(all_count)
-    align = ((avCos/float(known_count+1))**2 + (avSin/float(known_count+1))**2)**0.5
-    if abs(align-0.33)<0.01:
-        break
+    avDist = avDist
+    avAngle = (avAngle/float(all_count))
+    align = (avCos/float(known_count))#**2 + (avSin/float(known_count+1))**2)**0.5
+   
 
-    df.loc[len(df)] = [count,avDist, avAngle, align]
+    df.loc[len(df)] = [count,pos['Y'],pos['X'],thisX,thisY,thisAngle,avDist, avAngle, align]
     #break
 
 df.to_csv(outfilename,index_col=False)
+
+
+#
+dist_knn = df['dist_nn'].values
+angle_knn = df['angle_knn'].values
+align_knn = df['align_knn'].values
+plt.hist(align_knn,bins=100)
+plt.figure()
+plt.hist(angle_knn,bins=100)
+plt.figure()
+plt.hist2d(angle_knn,align_knn,bins=20)
+plt.hist2d(dist_knn,angle_knn,bins=50)
+#
+#plt.figure()
+#plt.hist(angle_knn,bins=100)
+#
+#plt.figure()
+#plt.hist(align_knn,bins=40)
+
 
 #            
 #rowCount = int(len(posDF))
