@@ -18,7 +18,7 @@ KN=2
 KN2=2
 
 
-columns = ['id', 'LAT','LON','x', 'y', 'angle', 'dist_nn', 'angle_knn','align_knn']
+columns = ['AID','LAT','LON','x', 'y', 'angle', 'dist_nn', 'angle_knn','align_knn']
 df = pd.DataFrame(columns=columns) 
 
 xvals=posDF['xm'].values
@@ -81,10 +81,10 @@ for i,pos in posDF.iterrows():
     align = (avCos/float(known_count))#**2 + (avSin/float(known_count+1))**2)**0.5
    
 
-    df.loc[len(df)] = [count,pos['Y'],pos['X'],thisX,thisY,thisAngle,avDist, avAngle, align]
+    df.loc[len(df)] = [pos['Pair_ID'],pos['Y'],pos['X'],thisX,thisY,thisAngle,avDist, avAngle, align]
     #break
 
-df.to_csv(outfilename,index_col=False)
+df.to_csv(outfilename,index_col=False,index=False)
 
 
 #
@@ -96,7 +96,7 @@ plt.figure()
 plt.hist(angle_knn,bins=100)
 plt.figure()
 plt.hist2d(angle_knn,align_knn,bins=20)
-plt.hist2d(dist_knn,angle_knn,bins=50)
+#plt.hist2d(dist_knn,angle_knn,bins=50)
 #
 #plt.figure()
 #plt.hist(angle_knn,bins=100)
